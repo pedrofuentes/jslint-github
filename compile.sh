@@ -1,0 +1,1 @@
+asset-smasher --compress --only jslintGithub.js.mf .

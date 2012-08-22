@@ -22,9 +22,9 @@ class JSlintGitHub
     file = $(element).parent().parent().parent().parent()
     if @type is 'diff' then file.find "[data-remote*=\"line=#{number}\"]" else file.find "#L#{number}"
 
-  findLineNumber: (element) ->
+  findLineNumber: (element, number) ->
     #TODO: Find number for @type file
-    if @type is 'diff' then element.parent().parent().find('.line_numbers').eq 1 else false
+    if @type is 'diff' then element.parent().parent().find('.line_numbers').eq 1 else element.parent().parent().parent().parent().find ".line_numbers #L#{number}"
 
   findType: ->
     @type = if @diffSelector.size() > 0 then 'diff' else if @fileSelector.size() > 0 then 'file' else false
@@ -36,8 +36,8 @@ class JSlintGitHub
   getUrl: (element) ->
     if @type is 'diff' then $(element).attr('href').replace 'blob', 'raw' else $(element).attr 'href'
 
-  setTooltip: (element, character, reason) ->
-    lineNumber = @findLineNumber element
+  setTooltip: (element, number, character, reason) ->
+    lineNumber = @findLineNumber element, number
     title      = lineNumber.attr('title') || ''
 
     lineNumber.attr 'title', "#{title}<div style=\"text-align:left;\">char(#{character}) #{reason}</div>"
@@ -55,7 +55,7 @@ class JSlintGitHub
         line = @findLine element, val.line
 
         if line.size() > 0
-          @setTooltip line, val.character, val.reason
+          @setTooltip line, val.line, val.character, val.reason
 
   testQuality: (data) ->
     JSLINT data

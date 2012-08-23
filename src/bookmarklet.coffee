@@ -10,8 +10,7 @@ class JSlintGitHub
       diffSelector: $ '#diff .actions a[href$="js"]'
       fileSelector: $ '#files #raw-url[href$="js"]'
       jslint:
-        maxerr    : 1000
-        maxlen    :  256
+        maxerr    : 60
     
     $.extend @options, options if options?
 
@@ -20,30 +19,36 @@ class JSlintGitHub
   
   checkFiles: ->
     $.each @files, (index, val) =>
-      @getFile @getUrl val
+      @getFile val
+
+  findDiffNumber: (element) ->
+    diffId      = $(element).closest('[id*="diff-"]').attr "id"
+    @diffNumber = diffId.replace "diff-", ""
+
+  findNumberForDiff: (number) ->
+    element = $ "#L#{@diffNumber}R#{number}"
+    if $.trim(element.text()) isnt "..." then element else []
+
+  findNumberForFile: (number) ->
+    $ ".line_numbers #L#{number}"
 
   findFiles: ->
     @files = if @type is 'diff' then @options.diffSelector else @options.fileSelector
 
-  findLine: (element, number) ->
-    file = $(element).parent().parent().parent().parent()
-    if @type is 'diff' then file.find "[data-remote*=\"line=#{number}\"]" else file.find "#L#{number}"
-
-  findLineNumber: (element, number) ->
-    if @type is 'diff' then element.parent().parent().find('.line_numbers').eq 1 else element.parent().parent().parent().parent().find ".line_numbers #L#{number}"
+  findLineNumber: (number) ->
+    if @type is 'diff' then @findNumberForDiff number else @findNumberForFile number
 
   findType: ->
-    @type = if @options.diffSelector.size() > 0 then 'diff' else if @options.fileSelector.size() > 0 then 'file' else false
+    @type = if @options.diffSelector.length > 0 then 'diff' else if @options.fileSelector.length > 0 then 'file' else false
 
-  getFile: (url) ->
-    $.get url, (data) =>
-      @testQuality data
+  getFile: (element) ->
+    $.get @getUrl(element), (data) =>
+      @testQuality element, data
 
   getUrl: (element) ->
     if @type is 'diff' then $(element).attr('href').replace 'blob', 'raw' else $(element).attr 'href'
 
-  setTooltip: (element, number, character, reason) ->
-    lineNumber = @findLineNumber element, number
+  setTooltip: (lineNumber, character, reason) ->
     title      = lineNumber.attr('title') || ''
 
     lineNumber.attr 'title', "#{title}<div style=\"text-align:left;\">char(#{character}) #{reason}</div>"
@@ -54,18 +59,19 @@ class JSlintGitHub
         gravity: $.fn.tipsy.autoNS,
         html: true
 
-  showErrors: ->
-    element = if @type is 'diff' then @options.diffSelector else @options.fileSelector
+  showErrors: (element) ->
+    @findDiffNumber element if @type is 'diff'
+
     $.each JSLINT.data().errors, (index, val) =>
       if val
-        line = @findLine element, val.line
+        lineNumber = @findLineNumber val.line
 
-        if line.size() > 0
-          @setTooltip line, val.line, val.character, val.reason
+        if lineNumber.length > 0
+          @setTooltip lineNumber, val.character, val.reason
 
-  testQuality: (data) ->
+  testQuality: (element, data) ->
     JSLINT data, @options.jslint
-    @showErrors()
+    @showErrors element
 
 JSlinter = new JSlintGitHub()
 JSlinter.checkFiles()
